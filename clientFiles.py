@@ -12,19 +12,21 @@ value.
 
 class findClientFile():
     #default_path = r'\\sb2210009332.ad.ing.net\FACTORLINK\Import\Clients\Handled'
-    result_path = r'H:\My Documents\Programming\clientfiles\\'
+    result_path = 'H:\My Documents\Programming\clientfiles\\'
     max_time = 0
     regex = ''
+    search_type = 'T'
     file_format = True
     file_found = False
 
-    def __init__(self, sequence = '40', total_days = 100,
+    def __init__(self, sequence = '20', search = 'T', total_days = 100,
                  file_format = True, source = 'DEV') -> None:
         self.max_time = total_days
         self.path = self.find_source_directory(self.find_start_path(source))
         #self.changeFilePath()
         self.result_path = self.create_result_directory(self.result_path)
         self.regex = sequence
+        self.search_type = search
         self.file_format = file_format
         self.main(self.path)
 
@@ -78,27 +80,34 @@ class findClientFile():
     
     def run_directory(self, path) -> bool:
         for file in os.listdir(path):
+            print(path)
             if self.read_file(path, file):
+                print('found file')
+                print(self.result_path+file)
                 copyfile(path+file, self.result_path+file)
                 return(True)
         return(False)            
 
     def read_file(self, path, file) -> bool:            
         with open(path + file, 'r') as read_file:
-            new_line = read_file.readline()
-            update_line = new_line.replace(';',' ')
+            new_line = read_file.readline()        
 
-            if self.file_format:
-                return self.find_text(update_line.split()[0])
+            if self.file_format and self.search_type == 'T':
+                update_line = new_line.replace(';',' ')
+                return self.find_regex(update_line.split()[0])
+            elif self.file_format and self.search_type == 'S':
+                return self.find_text(new_line)
             else:
-                return self.find_text(update_line)
+                return self.find_text(new_line)
 
-    def find_text(self, line) -> bool:
+    def find_regex(self, line) -> bool:
         regex = re.compile(self.regex)
         regex_search = regex.search(line)
 
         return regex_search != None 
             
+    def find_text(self, line) -> bool:
+        return self.regex in line
     
     def changeFilePath(self) -> None:
         new_path = input("Change file path? Default: " + self.path + " ")
