@@ -2,9 +2,11 @@ import os
 import string
 import operator
 from datetime import date
+import datetime
 from shutil import copyfile
 from dateutil.relativedelta import * 
 import re
+import calendar
 
 """
 This program looks into a file system and tries to find a file with a certain
@@ -14,16 +16,18 @@ value.
 class findFloridaFile():
     #default_path = r'\\sb2210009332.ad.ing.net\FACTORLINK\Import\Clients\Handled'
     start_path = ''
-    result_path = r'H:\My Documents\Programming\clientfiles\\'
+    result_path = r'H:\My Documents\Programming\floridafiles\\'
     max_time = 0
     file_type = ''
     file_found = False
 
-    def __init__(self, file = 'SD5', total_days = 100, source = 'DEV') -> None:
+    def __init__(self, file = 'SD3', total_days = 100, source = 'DEV') -> None:
         self.max_time = total_days
         self.start_path = self.find_source_directory(self.find_start_path(source))
         self.result_path = self.create_result_directory(self.result_path)
         self.file_type = file
+
+        self.main(self.start_path)
 
     def __repr__(self) -> str:
         return self.file_type
@@ -62,25 +66,19 @@ class findFloridaFile():
             os.makedirs(result_path)
         return result_path
 
-    def main(self, path) -> None:
-        print("to here")
-        
+    def main(self, path) -> None:    
         num_months = 0
-        file_found = False
-        while not(file_found) and num_months <self.max_time:
-            date_now = self.find_date_stamp(num_months)
-            start_path = self.find_directory(path, date_now)
-            
-            print(start_path)
-            file_path = self.find_directory(path, num_months)
-            if self.check_directory(file_path):
-                file_found = self.run_directory(file_path)
-            num_months+= 1
-           # print(file_path + ' number of days back: ' + str(num_days))
+        self.file_found = False
+        while not(self.file_found) and num_months <self.max_time:
+            path_days_date = self.find_date_stamp(num_months)
 
-        if file_found:
+            self.find_inner_directory(path_days_date[0],path_days_date[1],
+                                      path_days_date[2])
+            
+            num_months+= 1
+
+        if self.file_found:
             print('file is found!')
-            print(self.regex)
         else:
             print('no file is found :( ')
 
@@ -88,24 +86,40 @@ class findFloridaFile():
         return path + str(sub_path) + r'\\' 
 
 
-    def find_date_stamp(self, num_months) -> date:
-        new_date = date.today() + relativedelta(months=-num_months)
-        return new_date.strftime("%Y-%m")
+    def find_date_stamp(self, num_months) -> tuple:
+        new_date =  date.today() + relativedelta(months=-num_months)
+        total_days = calendar.monthrange(new_date.year,new_date.month)[1]
+        start_path = self.start_path + new_date.strftime("%Y-%m")        
         
+        return(start_path,total_days, new_date.strftime("%Y-%m"))
 
-    def find_inner_directory(self, path, num_days) -> os.path:
-        new_date = str(datetime.date.today() - datetime.timedelta(days=num_days))
-        return(path + new_date)
-
+    def find_inner_directory(self, path, num_days, year_month):
+        for days in range (num_days):
+            if days < 10:
+                days = '0'+str(days)
+            new_path = path + '\\' + year_month + '-' + str(days) + '\\'
+            print(new_path)
+            if self.check_directory(new_path):
+                if self.run_directory(new_path):
+                    break;
+            
     def check_directory(self, path) -> bool:
         return os.path.exists(path)
     
-    def run_directory(self, path) -> bool:
+    def run_directory(self, path) -> bool:        
         for file in os.listdir(path):
-            if self.read_file(path, file):
-                copyfile(path+file, self.result_path+file)
-                return(True)
-        return(False)            
+            if self.read_file_name(file):
+                print(path+file)
+                print(self.result_path+file)
+                copyfile(path+file, self.result_path+'\\'+file)
+                self.file_found = True
+                return True
+        return False
+    
+
+    def read_file_name(self, file):
+        matches = re.findall(self.file_type, file)
+        return len(matches) > 0
 
     def read_file(self, path, file) -> bool:            
         with open(path + file, 'r') as read_file:
